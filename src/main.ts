@@ -106,7 +106,8 @@ export default class TraktSyncPlugin extends Plugin {
         let tmdbId: number | string = "";
         let notePath = "";
         let tags: string[] = [];
-        let lastWatched = getLastWatched(items);
+        let lastWatchedStr = getLastWatched(items);
+        let lastWatched: Date | string = lastWatchedStr ? new Date(lastWatchedStr) : '';
         let watchedCount = getWatchedCount(items, mediaType);
         let lastEpisodeInfo: string | undefined = undefined;
         let tmdbData: any = {};

@@ -17412,23 +17412,28 @@ function buildMarkdown({
   propTmdbId = "tmdb_id"
 }) {
   const tagsStr = `[${tags.map((t) => `"${t}"`).join(", ")}]`;
+  let lastWatchedStr = "";
+  if (lastWatched instanceof Date) {
+    lastWatchedStr = lastWatched.toISOString().split("T")[0];
+  } else if (typeof lastWatched === "string") {
+    lastWatchedStr = lastWatched.split("T")[0];
+  }
   let content = `---
-title: "${title}"
-type: ${mediaType}
-tags: ${tagsStr}
-${propLastWatched}: ${lastWatched}
-${propWatchedCount}: ${watchedCount}
+`;
+  content += `title: "${title}"
+`;
+  content += `type: ${mediaType}
+`;
+  content += `tags: ${tagsStr}
+`;
+  content += `${propLastWatched}: ${lastWatchedStr}
+`;
+  content += `${propWatchedCount}: ${watchedCount}
 `;
   if (mediaType === "show" && lastEpisodeInfo) {
     content += `${propLastEpisodeWatched}: "${lastEpisodeInfo}"
 `;
   }
-  if (traktId !== void 0)
-    content += `${propTraktId}: ${traktId}
-`;
-  if (tmdbId !== void 0)
-    content += `${propTmdbId}: ${tmdbId}
-`;
   if (releaseDate !== void 0)
     content += `${propReleaseDate}: ${releaseDate}
 `;
@@ -17437,6 +17442,12 @@ ${propWatchedCount}: ${watchedCount}
 `;
   if (backdrop !== void 0)
     content += `${propBackdrop}: ${backdrop}
+`;
+  if (traktId !== void 0)
+    content += `${propTraktId}: ${traktId}
+`;
+  if (tmdbId !== void 0)
+    content += `${propTmdbId}: ${tmdbId}
 `;
   content += `last_updated: ${(/* @__PURE__ */ new Date()).toISOString()}
 ---
@@ -17466,7 +17477,8 @@ function groupHistoryItems(items) {
   return grouped;
 }
 function getLastWatched(items) {
-  return items.map((i) => i.watched_at).sort().reverse()[0];
+  const lastWatched = items.map((i) => i.watched_at).sort().reverse()[0];
+  return lastWatched ? lastWatched.split("T")[0] : "";
 }
 function getWatchedCount(items, type) {
   if (type === "movie") {
@@ -17564,7 +17576,8 @@ var TraktSyncPlugin = class extends import_obsidian.Plugin {
         let tmdbId = "";
         let notePath = "";
         let tags = [];
-        let lastWatched = getLastWatched(items);
+        let lastWatchedStr = getLastWatched(items);
+        let lastWatched = lastWatchedStr ? new Date(lastWatchedStr) : "";
         let watchedCount = getWatchedCount(items, mediaType);
         let lastEpisodeInfo = void 0;
         let tmdbData = {};

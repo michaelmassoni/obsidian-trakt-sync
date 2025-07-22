@@ -25,7 +25,8 @@ export function groupHistoryItems(items: TraktHistoryItem[]): GroupedHistory {
 }
 
 export function getLastWatched(items: TraktHistoryItem[]): string {
-  return items.map(i => i.watched_at).sort().reverse()[0];
+  const lastWatched = items.map(i => i.watched_at).sort().reverse()[0];
+  return lastWatched ? lastWatched.split('T')[0] : '';
 }
 
 export function getWatchedCount(items: TraktHistoryItem[], type: "movie" | "show"): number {
