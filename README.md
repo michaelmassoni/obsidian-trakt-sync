@@ -1,6 +1,6 @@
-# Trakt Sync
+# Trakt Sync for Obsidian
 
-_Automated syncing of your Trakt watch history (movies and shows) to your vault, enriched with TMDB metadata and customisable YAML frontmatter._
+An Obsidian plugin that provides automated syncing of your Trakt watch history (movies and shows) to your vault, enriched with TMDB metadata and customisable YAML frontmatter.
 
 ## Features
 
@@ -13,7 +13,7 @@ _Automated syncing of your Trakt watch history (movies and shows) to your vault,
 
 1. Download the latest release from the [Releases page](https://github.com/michaelmassoni/obsidian-trakt-sync/releases).
 2. Extract the contents into your vault’s plugins folder (e.g., `.obsidian/plugins/trakt-sync`).
-3. Enable the plugin in your app’s Community Plugins settings.
+3. Enable the plugin in Obsidian's Community Plugins settings.
 
 ## Setup
 
@@ -26,8 +26,8 @@ _Automated syncing of your Trakt watch history (movies and shows) to your vault,
 ## Usage
 
 - Use the command palette and run **Sync Trakt History**.
-- On first run, you’ll be prompted to visit a URL and enter a code to authorise the plugin with Trakt.
-- The plugin will fetch your watch history, enrich it with TMDB data, and create/update notes in your vault.
+- On first run, you’ll be prompted to visit a trakt.tv URL and enter a code to authorise the plugin with Trakt.
+- The plugin will fetch your watch history, enrich it with TMDB data, and create or update notes in your vault.
 - You can reset all settings to defaults from the settings page.
 
 ## Troubleshooting
