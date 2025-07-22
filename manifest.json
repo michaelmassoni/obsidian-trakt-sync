@@ -1,0 +1,10 @@
+{
+  "id": "trakt-sync",
+  "name": "Trakt Sync",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Automated syncing of your Trakt watch history (movies and shows) to your vault, enriched with TMDB metadata and customisable YAML frontmatter.",
+  "author": "Michael Massoni",
+  "authorUrl": "https://github.com/michaelmassoni",
+  "main": "main.js"
+} 
