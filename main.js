@@ -2739,9 +2739,9 @@ var require_lib2 = __commonJS({
       clone: { enumerable: true },
       signal: { enumerable: true }
     });
-    function getNodeRequestOptions(request) {
-      const parsedURL = request[INTERNALS$2].parsedURL;
-      const headers = new Headers(request[INTERNALS$2].headers);
+    function getNodeRequestOptions(request2) {
+      const parsedURL = request2[INTERNALS$2].parsedURL;
+      const headers = new Headers(request2[INTERNALS$2].headers);
       if (!headers.has("Accept")) {
         headers.set("Accept", "*/*");
       }
@@ -2751,15 +2751,15 @@ var require_lib2 = __commonJS({
       if (!/^https?:$/.test(parsedURL.protocol)) {
         throw new TypeError("Only HTTP(S) protocols are supported");
       }
-      if (request.signal && request.body instanceof Stream.Readable && !streamDestructionSupported) {
+      if (request2.signal && request2.body instanceof Stream.Readable && !streamDestructionSupported) {
         throw new Error("Cancellation of streamed requests with AbortSignal is not supported in node < 8");
       }
       let contentLengthValue = null;
-      if (request.body == null && /^(POST|PUT)$/i.test(request.method)) {
+      if (request2.body == null && /^(POST|PUT)$/i.test(request2.method)) {
         contentLengthValue = "0";
       }
-      if (request.body != null) {
-        const totalBytes = getTotalBytes(request);
+      if (request2.body != null) {
+        const totalBytes = getTotalBytes(request2);
         if (typeof totalBytes === "number") {
           contentLengthValue = String(totalBytes);
         }
@@ -2770,15 +2770,15 @@ var require_lib2 = __commonJS({
       if (!headers.has("User-Agent")) {
         headers.set("User-Agent", "node-fetch/1.0 (+https://github.com/bitinn/node-fetch)");
       }
-      if (request.compress && !headers.has("Accept-Encoding")) {
+      if (request2.compress && !headers.has("Accept-Encoding")) {
         headers.set("Accept-Encoding", "gzip,deflate");
       }
-      let agent = request.agent;
+      let agent = request2.agent;
       if (typeof agent === "function") {
         agent = agent(parsedURL);
       }
       return Object.assign({}, parsedURL, {
-        method: request.method,
+        method: request2.method,
         headers: exportNodeCompatibleHeaders(headers),
         agent
       });
@@ -2810,16 +2810,16 @@ var require_lib2 = __commonJS({
       }
       Body.Promise = fetch3.Promise;
       return new fetch3.Promise(function(resolve, reject) {
-        const request = new Request2(url2, opts);
-        const options = getNodeRequestOptions(request);
+        const request2 = new Request2(url2, opts);
+        const options = getNodeRequestOptions(request2);
         const send = (options.protocol === "https:" ? https2 : http2).request;
-        const signal = request.signal;
+        const signal = request2.signal;
         let response = null;
         const abort = function abort2() {
           let error = new AbortError("The user aborted a request.");
           reject(error);
-          if (request.body && request.body instanceof Stream.Readable) {
-            destroyStream(request.body, error);
+          if (request2.body && request2.body instanceof Stream.Readable) {
+            destroyStream(request2.body, error);
           }
           if (!response || !response.body)
             return;
@@ -2844,16 +2844,16 @@ var require_lib2 = __commonJS({
             signal.removeEventListener("abort", abortAndFinalize);
           clearTimeout(reqTimeout);
         }
-        if (request.timeout) {
+        if (request2.timeout) {
           req.once("socket", function(socket) {
             reqTimeout = setTimeout(function() {
-              reject(new FetchError(`network timeout at: ${request.url}`, "request-timeout"));
+              reject(new FetchError(`network timeout at: ${request2.url}`, "request-timeout"));
               finalize();
-            }, request.timeout);
+            }, request2.timeout);
           });
         }
         req.on("error", function(err) {
-          reject(new FetchError(`request to ${request.url} failed, reason: ${err.message}`, "system", err));
+          reject(new FetchError(`request to ${request2.url} failed, reason: ${err.message}`, "system", err));
           if (response && response.body) {
             destroyStream(response.body, err);
           }
@@ -2886,17 +2886,17 @@ var require_lib2 = __commonJS({
             const location = headers.get("Location");
             let locationURL = null;
             try {
-              locationURL = location === null ? null : new URL$1(location, request.url).toString();
+              locationURL = location === null ? null : new URL$1(location, request2.url).toString();
             } catch (err) {
-              if (request.redirect !== "manual") {
+              if (request2.redirect !== "manual") {
                 reject(new FetchError(`uri requested responds with an invalid redirect URL: ${location}`, "invalid-redirect"));
                 finalize();
                 return;
               }
             }
-            switch (request.redirect) {
+            switch (request2.redirect) {
               case "error":
-                reject(new FetchError(`uri requested responds with a redirect, redirect mode is set to error: ${request.url}`, "no-redirect"));
+                reject(new FetchError(`uri requested responds with a redirect, redirect mode is set to error: ${request2.url}`, "no-redirect"));
                 finalize();
                 return;
               case "manual":
@@ -2912,34 +2912,34 @@ var require_lib2 = __commonJS({
                 if (locationURL === null) {
                   break;
                 }
-                if (request.counter >= request.follow) {
-                  reject(new FetchError(`maximum redirect reached at: ${request.url}`, "max-redirect"));
+                if (request2.counter >= request2.follow) {
+                  reject(new FetchError(`maximum redirect reached at: ${request2.url}`, "max-redirect"));
                   finalize();
                   return;
                 }
                 const requestOpts = {
-                  headers: new Headers(request.headers),
-                  follow: request.follow,
-                  counter: request.counter + 1,
-                  agent: request.agent,
-                  compress: request.compress,
-                  method: request.method,
-                  body: request.body,
-                  signal: request.signal,
-                  timeout: request.timeout,
-                  size: request.size
+                  headers: new Headers(request2.headers),
+                  follow: request2.follow,
+                  counter: request2.counter + 1,
+                  agent: request2.agent,
+                  compress: request2.compress,
+                  method: request2.method,
+                  body: request2.body,
+                  signal: request2.signal,
+                  timeout: request2.timeout,
+                  size: request2.size
                 };
-                if (!isDomainOrSubdomain(request.url, locationURL) || !isSameProtocol(request.url, locationURL)) {
+                if (!isDomainOrSubdomain(request2.url, locationURL) || !isSameProtocol(request2.url, locationURL)) {
                   for (const name of ["authorization", "www-authenticate", "cookie", "cookie2"]) {
                     requestOpts.headers.delete(name);
                   }
                 }
-                if (res.statusCode !== 303 && request.body && getTotalBytes(request) === null) {
+                if (res.statusCode !== 303 && request2.body && getTotalBytes(request2) === null) {
                   reject(new FetchError("Cannot follow redirect with body being a readable stream", "unsupported-redirect"));
                   finalize();
                   return;
                 }
-                if (res.statusCode === 303 || (res.statusCode === 301 || res.statusCode === 302) && request.method === "POST") {
+                if (res.statusCode === 303 || (res.statusCode === 301 || res.statusCode === 302) && request2.method === "POST") {
                   requestOpts.method = "GET";
                   requestOpts.body = void 0;
                   requestOpts.headers.delete("content-length");
@@ -2955,16 +2955,16 @@ var require_lib2 = __commonJS({
           });
           let body = res.pipe(new PassThrough$1());
           const response_options = {
-            url: request.url,
+            url: request2.url,
             status: res.statusCode,
             statusText: res.statusMessage,
             headers,
-            size: request.size,
-            timeout: request.timeout,
-            counter: request.counter
+            size: request2.size,
+            timeout: request2.timeout,
+            counter: request2.counter
           };
           const codings = headers.get("Content-Encoding");
-          if (!request.compress || request.method === "HEAD" || codings === null || res.statusCode === 204 || res.statusCode === 304) {
+          if (!request2.compress || request2.method === "HEAD" || codings === null || res.statusCode === 204 || res.statusCode === 304) {
             response = new Response2(body, response_options);
             resolve(response);
             return;
@@ -3007,15 +3007,15 @@ var require_lib2 = __commonJS({
           response = new Response2(body, response_options);
           resolve(response);
         });
-        writeToStream(req, request);
+        writeToStream(req, request2);
       });
     }
-    function fixResponseChunkedTransferBadEnding(request, errorCallback) {
+    function fixResponseChunkedTransferBadEnding(request2, errorCallback) {
       let socket;
-      request.on("socket", function(s) {
+      request2.on("socket", function(s) {
         socket = s;
       });
-      request.on("response", function(response) {
+      request2.on("response", function(response) {
         const headers = response.headers;
         if (headers["transfer-encoding"] === "chunked" && !headers["content-length"]) {
           response.once("close", function(hadError) {
@@ -13263,7 +13263,7 @@ var require_form_data = __commonJS({
       });
     };
     FormData3.prototype.submit = function(params, cb) {
-      var request;
+      var request2;
       var options;
       var defaults2 = { method: "post" };
       if (typeof params === "string") {
@@ -13282,9 +13282,9 @@ var require_form_data = __commonJS({
       }
       options.headers = this.getHeaders(params.headers);
       if (options.protocol === "https:") {
-        request = https2.request(options);
+        request2 = https2.request(options);
       } else {
-        request = http2.request(options);
+        request2 = http2.request(options);
       }
       this.getLength(function(err, length) {
         if (err && err !== "Unknown stream") {
@@ -13292,22 +13292,22 @@ var require_form_data = __commonJS({
           return;
         }
         if (length) {
-          request.setHeader("Content-Length", length);
+          request2.setHeader("Content-Length", length);
         }
-        this.pipe(request);
+        this.pipe(request2);
         if (cb) {
           var onResponse;
           var callback = function(error, responce) {
-            request.removeListener("error", callback);
-            request.removeListener("response", onResponse);
+            request2.removeListener("error", callback);
+            request2.removeListener("response", onResponse);
             return cb.call(this, error, responce);
           };
           onResponse = callback.bind(this, null);
-          request.on("error", callback);
-          request.on("response", onResponse);
+          request2.on("error", callback);
+          request2.on("response", onResponse);
         }
       }.bind(this));
-      return request;
+      return request2;
     };
     FormData3.prototype._error = function(err) {
       if (!this.error) {
@@ -13665,10 +13665,10 @@ var require_follow_redirects = __commonJS({
         var scheme = protocol.slice(0, -1);
         this._options.agent = this._options.agents[scheme];
       }
-      var request = this._currentRequest = nativeProtocol.request(this._options, this._onNativeResponse);
-      request._redirectable = this;
+      var request2 = this._currentRequest = nativeProtocol.request(this._options, this._onNativeResponse);
+      request2._redirectable = this;
       for (var event of events) {
-        request.on(event, eventHandlers[event]);
+        request2.on(event, eventHandlers[event]);
       }
       this._currentUrl = /^\//.test(this._options.path) ? url2.format(this._options) : (
         // When making a request to a proxy, […]
@@ -13680,16 +13680,16 @@ var require_follow_redirects = __commonJS({
         var self2 = this;
         var buffers = this._requestBodyBuffers;
         (function writeNext(error) {
-          if (request === self2._currentRequest) {
+          if (request2 === self2._currentRequest) {
             if (error) {
               self2.emit("error", error);
             } else if (i < buffers.length) {
               var buffer = buffers[i++];
-              if (!request.finished) {
-                request.write(buffer.data, buffer.encoding, writeNext);
+              if (!request2.finished) {
+                request2.write(buffer.data, buffer.encoding, writeNext);
               }
             } else if (self2._ended) {
-              request.end();
+              request2.end();
             }
           }
         })();
@@ -13771,7 +13771,7 @@ var require_follow_redirects = __commonJS({
         var protocol = scheme + ":";
         var nativeProtocol = nativeProtocols[protocol] = protocols[scheme];
         var wrappedProtocol = exports3[scheme] = Object.create(nativeProtocol);
-        function request(input, options, callback) {
+        function request2(input, options, callback) {
           if (isURL(input)) {
             input = spreadUrlObject(input);
           } else if (isString2(input)) {
@@ -13803,7 +13803,7 @@ var require_follow_redirects = __commonJS({
           return wrappedRequest;
         }
         Object.defineProperties(wrappedProtocol, {
-          request: { value: request, configurable: true, enumerable: true, writable: true },
+          request: { value: request2, configurable: true, enumerable: true, writable: true },
           get: { value: get, configurable: true, enumerable: true, writable: true }
         });
       });
@@ -13881,12 +13881,12 @@ var require_follow_redirects = __commonJS({
       });
       return CustomError;
     }
-    function destroyRequest(request, error) {
+    function destroyRequest(request2, error) {
       for (var event of events) {
-        request.removeListener(event, eventHandlers[event]);
+        request2.removeListener(event, eventHandlers[event]);
       }
-      request.on("error", noop2);
-      request.destroy(error);
+      request2.on("error", noop2);
+      request2.destroy(error);
     }
     function isSubdomain(subdomain, domain) {
       assert(isString2(subdomain) && isString2(domain));
@@ -14426,7 +14426,7 @@ var utils_default = {
 };
 
 // node_modules/axios/lib/core/AxiosError.js
-function AxiosError(message, code, config, request, response) {
+function AxiosError(message, code, config, request2, response) {
   Error.call(this);
   if (Error.captureStackTrace) {
     Error.captureStackTrace(this, this.constructor);
@@ -14437,7 +14437,7 @@ function AxiosError(message, code, config, request, response) {
   this.name = "AxiosError";
   code && (this.code = code);
   config && (this.config = config);
-  request && (this.request = request);
+  request2 && (this.request = request2);
   if (response) {
     this.response = response;
     this.status = response.status ? response.status : null;
@@ -14485,14 +14485,14 @@ var descriptors = {};
 });
 Object.defineProperties(AxiosError, descriptors);
 Object.defineProperty(prototype, "isAxiosError", { value: true });
-AxiosError.from = (error, code, config, request, response, customProps) => {
+AxiosError.from = (error, code, config, request2, response, customProps) => {
   const axiosError = Object.create(prototype);
   utils_default.toFlatObject(error, axiosError, function filter2(obj) {
     return obj !== Error.prototype;
   }, (prop) => {
     return prop !== "isAxiosError";
   });
-  AxiosError.call(axiosError, error.message, code, config, request, response);
+  AxiosError.call(axiosError, error.message, code, config, request2, response);
   axiosError.cause = error;
   axiosError.name = error.name;
   customProps && Object.assign(axiosError, customProps);
@@ -15288,8 +15288,8 @@ function isCancel(value) {
 }
 
 // node_modules/axios/lib/cancel/CanceledError.js
-function CanceledError(message, config, request) {
-  AxiosError_default.call(this, message == null ? "canceled" : message, AxiosError_default.ERR_CANCELED, config, request);
+function CanceledError(message, config, request2) {
+  AxiosError_default.call(this, message == null ? "canceled" : message, AxiosError_default.ERR_CANCELED, config, request2);
   this.name = "CanceledError";
 }
 utils_default.inherits(CanceledError, AxiosError_default, {
@@ -16416,24 +16416,24 @@ var xhr_default = isXHRAdapterSupported && function(config) {
       _config.cancelToken && _config.cancelToken.unsubscribe(onCanceled);
       _config.signal && _config.signal.removeEventListener("abort", onCanceled);
     }
-    let request = new XMLHttpRequest();
-    request.open(_config.method.toUpperCase(), _config.url, true);
-    request.timeout = _config.timeout;
+    let request2 = new XMLHttpRequest();
+    request2.open(_config.method.toUpperCase(), _config.url, true);
+    request2.timeout = _config.timeout;
     function onloadend() {
-      if (!request) {
+      if (!request2) {
         return;
       }
       const responseHeaders = AxiosHeaders_default.from(
-        "getAllResponseHeaders" in request && request.getAllResponseHeaders()
+        "getAllResponseHeaders" in request2 && request2.getAllResponseHeaders()
       );
-      const responseData = !responseType || responseType === "text" || responseType === "json" ? request.responseText : request.response;
+      const responseData = !responseType || responseType === "text" || responseType === "json" ? request2.responseText : request2.response;
       const response = {
         data: responseData,
-        status: request.status,
-        statusText: request.statusText,
+        status: request2.status,
+        statusText: request2.statusText,
         headers: responseHeaders,
         config,
-        request
+        request: request2
       };
       settle(function _resolve(value) {
         resolve(value);
@@ -16442,33 +16442,33 @@ var xhr_default = isXHRAdapterSupported && function(config) {
         reject(err);
         done();
       }, response);
-      request = null;
+      request2 = null;
     }
-    if ("onloadend" in request) {
-      request.onloadend = onloadend;
+    if ("onloadend" in request2) {
+      request2.onloadend = onloadend;
     } else {
-      request.onreadystatechange = function handleLoad() {
-        if (!request || request.readyState !== 4) {
+      request2.onreadystatechange = function handleLoad() {
+        if (!request2 || request2.readyState !== 4) {
           return;
         }
-        if (request.status === 0 && !(request.responseURL && request.responseURL.indexOf("file:") === 0)) {
+        if (request2.status === 0 && !(request2.responseURL && request2.responseURL.indexOf("file:") === 0)) {
           return;
         }
         setTimeout(onloadend);
       };
     }
-    request.onabort = function handleAbort() {
-      if (!request) {
+    request2.onabort = function handleAbort() {
+      if (!request2) {
         return;
       }
-      reject(new AxiosError_default("Request aborted", AxiosError_default.ECONNABORTED, config, request));
-      request = null;
+      reject(new AxiosError_default("Request aborted", AxiosError_default.ECONNABORTED, config, request2));
+      request2 = null;
     };
-    request.onerror = function handleError() {
-      reject(new AxiosError_default("Network Error", AxiosError_default.ERR_NETWORK, config, request));
-      request = null;
+    request2.onerror = function handleError() {
+      reject(new AxiosError_default("Network Error", AxiosError_default.ERR_NETWORK, config, request2));
+      request2 = null;
     };
-    request.ontimeout = function handleTimeout() {
+    request2.ontimeout = function handleTimeout() {
       let timeoutErrorMessage = _config.timeout ? "timeout of " + _config.timeout + "ms exceeded" : "timeout exceeded";
       const transitional2 = _config.transitional || transitional_default;
       if (_config.timeoutErrorMessage) {
@@ -16478,39 +16478,39 @@ var xhr_default = isXHRAdapterSupported && function(config) {
         timeoutErrorMessage,
         transitional2.clarifyTimeoutError ? AxiosError_default.ETIMEDOUT : AxiosError_default.ECONNABORTED,
         config,
-        request
+        request2
       ));
-      request = null;
+      request2 = null;
     };
     requestData === void 0 && requestHeaders.setContentType(null);
-    if ("setRequestHeader" in request) {
+    if ("setRequestHeader" in request2) {
       utils_default.forEach(requestHeaders.toJSON(), function setRequestHeader(val, key) {
-        request.setRequestHeader(key, val);
+        request2.setRequestHeader(key, val);
       });
     }
     if (!utils_default.isUndefined(_config.withCredentials)) {
-      request.withCredentials = !!_config.withCredentials;
+      request2.withCredentials = !!_config.withCredentials;
     }
     if (responseType && responseType !== "json") {
-      request.responseType = _config.responseType;
+      request2.responseType = _config.responseType;
     }
     if (onDownloadProgress) {
       [downloadThrottled, flushDownload] = progressEventReducer(onDownloadProgress, true);
-      request.addEventListener("progress", downloadThrottled);
+      request2.addEventListener("progress", downloadThrottled);
     }
-    if (onUploadProgress && request.upload) {
+    if (onUploadProgress && request2.upload) {
       [uploadThrottled, flushUpload] = progressEventReducer(onUploadProgress);
-      request.upload.addEventListener("progress", uploadThrottled);
-      request.upload.addEventListener("loadend", flushUpload);
+      request2.upload.addEventListener("progress", uploadThrottled);
+      request2.upload.addEventListener("loadend", flushUpload);
     }
     if (_config.cancelToken || _config.signal) {
       onCanceled = (cancel) => {
-        if (!request) {
+        if (!request2) {
           return;
         }
-        reject(!cancel || cancel.type ? new CanceledError_default(null, config, request) : cancel);
-        request.abort();
-        request = null;
+        reject(!cancel || cancel.type ? new CanceledError_default(null, config, request2) : cancel);
+        request2.abort();
+        request2 = null;
       };
       _config.cancelToken && _config.cancelToken.subscribe(onCanceled);
       if (_config.signal) {
@@ -16522,7 +16522,7 @@ var xhr_default = isXHRAdapterSupported && function(config) {
       reject(new AxiosError_default("Unsupported protocol " + protocol + ":", AxiosError_default.ERR_BAD_REQUEST, config));
       return;
     }
-    request.send(requestData || null);
+    request2.send(requestData || null);
   });
 };
 
@@ -16719,7 +16719,7 @@ var fetch_default = isFetchSupported && (async (config) => {
   } = resolveConfig_default(config);
   responseType = responseType ? (responseType + "").toLowerCase() : "text";
   let composedSignal = composeSignals_default([signal, cancelToken && cancelToken.toAbortSignal()], timeout);
-  let request;
+  let request2;
   const unsubscribe = composedSignal && composedSignal.unsubscribe && (() => {
     composedSignal.unsubscribe();
   });
@@ -16747,7 +16747,7 @@ var fetch_default = isFetchSupported && (async (config) => {
       withCredentials = withCredentials ? "include" : "omit";
     }
     const isCredentialsSupported = "credentials" in Request.prototype;
-    request = new Request(url2, {
+    request2 = new Request(url2, {
       ...fetchOptions,
       signal: composedSignal,
       method: method.toUpperCase(),
@@ -16756,7 +16756,7 @@ var fetch_default = isFetchSupported && (async (config) => {
       duplex: "half",
       credentials: isCredentialsSupported ? withCredentials : void 0
     });
-    let response = await fetch(request, fetchOptions);
+    let response = await fetch(request2, fetchOptions);
     const isStreamResponse = supportsResponseStream && (responseType === "stream" || responseType === "response");
     if (supportsResponseStream && (onDownloadProgress || isStreamResponse && unsubscribe)) {
       const options = {};
@@ -16786,20 +16786,20 @@ var fetch_default = isFetchSupported && (async (config) => {
         status: response.status,
         statusText: response.statusText,
         config,
-        request
+        request: request2
       });
     });
   } catch (err) {
     unsubscribe && unsubscribe();
     if (err && err.name === "TypeError" && /Load failed|fetch/i.test(err.message)) {
       throw Object.assign(
-        new AxiosError_default("Network Error", AxiosError_default.ERR_NETWORK, config, request),
+        new AxiosError_default("Network Error", AxiosError_default.ERR_NETWORK, config, request2),
         {
           cause: err.cause || err
         }
       );
     }
-    throw AxiosError_default.from(err, err && err.code, config, request);
+    throw AxiosError_default.from(err, err && err.code, config, request2);
   }
 });
 
@@ -17170,11 +17170,11 @@ var CancelToken = class _CancelToken {
       };
       return promise;
     };
-    executor(function cancel(message, config, request) {
+    executor(function cancel(message, config, request2) {
       if (token.reason) {
         return;
       }
-      token.reason = new CanceledError_default(message, config, request);
+      token.reason = new CanceledError_default(message, config, request2);
       resolvePromise(token.reason);
     });
   }
@@ -17504,6 +17504,7 @@ function getLastEpisodeInfo(items) {
 
 // src/main.ts
 var import_slugify = __toESM(require_slugify());
+var import_obsidian2 = require("obsidian");
 var DEFAULT_SETTINGS = {
   traktClientId: "",
   traktClientSecret: "",
@@ -17528,6 +17529,20 @@ var DEFAULT_SETTINGS = {
   propTmdbId: "tmdb_id",
   tagFormat: "plain"
 };
+async function ensureDir(adapter, dir) {
+  const parts = dir.split("/");
+  let current = "";
+  for (const part of parts) {
+    if (!part)
+      continue;
+    current += (current ? "/" : "") + part;
+    try {
+      await adapter.stat(current);
+    } catch {
+      await adapter.mkdir(current);
+    }
+  }
+}
 var TraktSyncPlugin = class extends import_obsidian.Plugin {
   constructor() {
     super(...arguments);
@@ -17540,6 +17555,11 @@ var TraktSyncPlugin = class extends import_obsidian.Plugin {
       id: "sync-trakt-history",
       name: "Sync Trakt watch history",
       callback: () => this.syncTraktHistory()
+    });
+    this.addCommand({
+      id: "add-watched-to-trakt",
+      name: "Add watched movie/show to Trakt",
+      callback: () => this.openAddWatchedModal()
     });
   }
   async syncTraktHistory() {
@@ -17636,29 +17656,14 @@ var TraktSyncPlugin = class extends import_obsidian.Plugin {
           propTraktId: this.settings.propTraktId,
           propTmdbId: this.settings.propTmdbId
         });
-        await this.app.vault.adapter.mkdir((0, import_obsidian.normalizePath)(notePath.split("/").slice(0, -1).join("/")));
-        let fileExisted = false;
-        try {
-          await this.app.vault.adapter.stat(notePath);
-          fileExisted = true;
-        } catch {
-        }
-        let updatedFile = false;
-        if (fileExisted) {
-          const oldContent = await this.app.vault.adapter.read(notePath);
-          if (oldContent !== markdown) {
-            await this.app.vault.adapter.write(notePath, markdown);
-            updated++;
-            updatedFile = true;
-          } else {
-            skipped++;
-          }
-        } else {
-          await this.app.vault.adapter.write(notePath, markdown);
-          created++;
-        }
+        const folderPath = (0, import_obsidian.normalizePath)(notePath.split("/").slice(0, -1).join("/"));
+        console.log("[TraktSyncPlugin] Ensuring folder exists:", folderPath);
+        await ensureDir(this.app.vault.adapter, folderPath);
+        console.log("[TraktSyncPlugin] Writing file (no read, always overwrite):", notePath);
+        await this.app.vault.adapter.write(notePath, markdown);
+        created++;
         processed++;
-        progressNotice.setMessage(`Trakt Sync: ${processed}/${total} (${created} created, ${updated} updated, ${skipped} skipped)`);
+        progressNotice.setMessage(`Trakt Sync: ${processed}/${total} (${created} written)`);
       }
       progressNotice.hide();
     } catch (e) {
@@ -17679,6 +17684,59 @@ var TraktSyncPlugin = class extends import_obsidian.Plugin {
   }
   async saveSettings() {
     await this.saveData(this.settings);
+  }
+  openAddWatchedModal() {
+    new AddWatchedModal(this.app, this).open();
+  }
+  async addMovieToTrakt(item, watchedAt) {
+    const token = this.traktToken || await this.loadToken();
+    if (!token)
+      throw new Error("Not authenticated with Trakt");
+    const payload = {
+      movies: [
+        {
+          ids: { tmdb: item.id },
+          watched_at: watchedAt
+        }
+      ]
+    };
+    await (0, import_obsidian2.request)({
+      url: "https://api.trakt.tv/sync/history",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "trakt-api-version": "2",
+        "trakt-api-key": this.settings.traktClientId,
+        "Authorization": `Bearer ${token.access_token}`
+      },
+      body: JSON.stringify(payload)
+    });
+  }
+  async addEpisodesToTrakt(item, episodes) {
+    const token = this.traktToken || await this.loadToken();
+    if (!token)
+      throw new Error("Not authenticated with Trakt");
+    const payload = {
+      episodes: episodes.map((ep) => ({
+        ids: { tmdb: item.id },
+        season: ep.season,
+        number: ep.episode,
+        watched_at: ep.watched_at
+      }))
+    };
+    console.log("[TraktSyncPlugin] Trakt episode payload:", JSON.stringify(payload, null, 2));
+    const response = await (0, import_obsidian2.request)({
+      url: "https://api.trakt.tv/sync/history",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "trakt-api-version": "2",
+        "trakt-api-key": this.settings.traktClientId,
+        "Authorization": `Bearer ${token.access_token}`
+      },
+      body: JSON.stringify(payload)
+    });
+    console.log("[TraktSyncPlugin] Trakt API response:", response);
   }
 };
 var TraktDeviceCodeModal = class extends import_obsidian.Modal {
@@ -17901,6 +17959,221 @@ var TraktSyncSettingTab = class extends import_obsidian.PluginSettingTab {
     );
   }
 };
+var AddWatchedModal = class extends import_obsidian.Modal {
+  constructor(app, plugin) {
+    super(app);
+    this.results = [];
+    this.plugin = plugin;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h2", { text: "Search TMDB for Movie/Show" });
+    this.searchInput = contentEl.createEl("input", { type: "text", placeholder: "Type a movie or show name..." });
+    this.resultsContainer = contentEl.createEl("div");
+    this.searchInput.addEventListener("input", async () => {
+      const query = this.searchInput.value.trim();
+      if (query.length < 2) {
+        this.resultsContainer.empty();
+        return;
+      }
+      this.resultsContainer.setText("Searching...");
+      const tmdbKey = this.plugin.settings.tmdbApiKey;
+      const url2 = `https://api.themoviedb.org/3/search/multi?api_key=${tmdbKey}&query=${encodeURIComponent(query)}`;
+      try {
+        const resp = await (0, import_obsidian2.request)({ url: url2, method: "GET" });
+        const data = JSON.parse(resp);
+        this.results = (data.results || []).filter((r) => r.media_type === "movie" || r.media_type === "tv");
+        this.renderResults();
+      } catch (e) {
+        this.resultsContainer.setText("Error searching TMDB");
+      }
+    });
+  }
+  renderResults() {
+    console.log("[TraktSyncPlugin] TMDB search results:", this.results.map((item) => ({ title: item.title || item.name, id: item.id, media_type: item.media_type })));
+    this.resultsContainer.empty();
+    if (!this.results.length) {
+      this.resultsContainer.setText("No results");
+      return;
+    }
+    this.results.forEach((item) => {
+      const row = this.resultsContainer.createEl("div", { cls: "tmdb-search-result" });
+      row.createEl("span", { text: `${item.media_type === "movie" ? "\u{1F3AC}" : "\u{1F4FA}"} ${item.title || item.name} (${(item.release_date || item.first_air_date || "").split("-")[0]})` });
+      row.addEventListener("click", () => this.handleSelect(item));
+    });
+  }
+  async handleSelect(item) {
+    console.log("[TraktSyncPlugin] handleSelect:", { name: item.title || item.name, id: item.id, media_type: item.media_type });
+    if (item.media_type === "movie") {
+      this.promptForMovieDate(item);
+    } else if (item.media_type === "tv") {
+      await this.promptForShowEpisodes(item);
+    }
+  }
+  async promptForMovieDate(item) {
+    this.contentEl.empty();
+    this.contentEl.createEl("h2", { text: `Add Movie: ${item.title}` });
+    const dateInput = this.contentEl.createEl("input", { type: "datetime-local" });
+    const now = /* @__PURE__ */ new Date();
+    dateInput.value = now.toISOString().slice(0, 16);
+    const submitBtn = this.contentEl.createEl("button", { text: "Add to Trakt" });
+    submitBtn.addEventListener("click", async () => {
+      const watchedAt = new Date(dateInput.value).toISOString();
+      await this.plugin.addMovieToTrakt(item, watchedAt);
+      new import_obsidian.Notice(`Added ${item.title} to Trakt!`);
+      this.close();
+    });
+  }
+  async promptForShowEpisodes(item) {
+    console.log("[TraktSyncPlugin] promptForShowEpisodes:", { name: item.name, id: item.id });
+    let traktShow = null;
+    let traktIds = null;
+    try {
+      const resp = await (0, import_obsidian2.request)({
+        url: `https://api.trakt.tv/search/tmdb/${item.id}?type=show`,
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "trakt-api-version": "2",
+          "trakt-api-key": this.plugin.settings.traktClientId
+        }
+      });
+      const data = JSON.parse(resp);
+      if (data && data.length > 0 && data[0].show && data[0].show.ids) {
+        traktShow = data[0].show;
+        traktIds = data[0].show.ids;
+      }
+    } catch (e) {
+      console.log("[TraktSyncPlugin] Error fetching Trakt show:", e);
+    }
+    if (!traktShow || !traktIds || !traktIds.trakt) {
+      new import_obsidian.Notice("Could not find this show on Trakt. Aborting.");
+      return;
+    }
+    this.contentEl.empty();
+    this.contentEl.createEl("h2", { text: `Add Show: ${traktShow.title}` });
+    if (traktShow.year)
+      this.contentEl.createEl("div", { text: `Year: ${traktShow.year}` });
+    if (traktShow.images && traktShow.images.poster && traktShow.images.poster.full) {
+      const img = this.contentEl.createEl("img");
+      img.src = traktShow.images.poster.full;
+      img.style.maxWidth = "100px";
+    }
+    this.contentEl.createEl("a", { text: "View on Trakt", href: `https://trakt.tv/shows/${traktShow.ids.slug || traktShow.ids.trakt}`, attr: { target: "_blank" } });
+    this.contentEl.createEl("hr");
+    let seasons = [];
+    try {
+      const resp = await (0, import_obsidian2.request)({
+        url: `https://api.trakt.tv/shows/${traktIds.trakt}/seasons?extended=episodes`,
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "trakt-api-version": "2",
+          "trakt-api-key": this.plugin.settings.traktClientId
+        }
+      });
+      seasons = JSON.parse(resp);
+    } catch (e) {
+      new import_obsidian.Notice("Could not fetch seasons/episodes from Trakt.");
+      return;
+    }
+    const dateInput = this.contentEl.createEl("input", { type: "datetime-local" });
+    const now = /* @__PURE__ */ new Date();
+    dateInput.value = now.toISOString().slice(0, 16);
+    const allEpisodes = [];
+    seasons.forEach((season) => {
+      if (season.number === 0)
+        return;
+      (season.episodes || []).forEach((ep) => {
+        allEpisodes.push({ season: season.number, episode: ep.number, ids: ep.ids, title: ep.title });
+      });
+    });
+    const checkedEpisodes = /* @__PURE__ */ new Set();
+    const showCheckbox = this.contentEl.createEl("input", { type: "checkbox" });
+    showCheckbox.id = "show-checkbox";
+    this.contentEl.createEl("label", { text: "Mark entire show as watched", attr: { for: "show-checkbox" } });
+    showCheckbox.addEventListener("change", () => {
+      if (showCheckbox.checked) {
+        allEpisodes.forEach((ep) => checkedEpisodes.add(`${ep.season}-${ep.episode}`));
+        this.contentEl.querySelectorAll(".season-checkbox, .episode-checkbox").forEach((cb) => cb.checked = true);
+      } else {
+        checkedEpisodes.clear();
+        this.contentEl.querySelectorAll(".season-checkbox, .episode-checkbox").forEach((cb) => cb.checked = false);
+      }
+    });
+    this.contentEl.createEl("br");
+    seasons.forEach((season) => {
+      if (season.number === 0)
+        return;
+      const seasonDiv = this.contentEl.createEl("div", { cls: "season-block" });
+      const seasonCheckbox = seasonDiv.createEl("input", { type: "checkbox", cls: "season-checkbox" });
+      seasonCheckbox.id = `season-${season.number}`;
+      seasonDiv.createEl("label", { text: `Season ${season.number}`, attr: { for: `season-${season.number}` } });
+      seasonCheckbox.addEventListener("change", () => {
+        (season.episodes || []).forEach((ep) => {
+          const key = `${season.number}-${ep.number}`;
+          const epCb = this.contentEl.querySelector(`#ep-${key}`);
+          if (seasonCheckbox.checked) {
+            checkedEpisodes.add(key);
+            if (epCb)
+              epCb.checked = true;
+          } else {
+            checkedEpisodes.delete(key);
+            if (epCb)
+              epCb.checked = false;
+          }
+        });
+      });
+      const epList = seasonDiv.createEl("div", { cls: "episode-list" });
+      (season.episodes || []).forEach((ep) => {
+        const key = `${season.number}-${ep.number}`;
+        const epCb = epList.createEl("input", { type: "checkbox", cls: "episode-checkbox" });
+        epCb.id = `ep-${key}`;
+        epCb.addEventListener("change", () => {
+          if (epCb.checked) {
+            checkedEpisodes.add(key);
+          } else {
+            checkedEpisodes.delete(key);
+            seasonCheckbox.checked = (season.episodes || []).every((ep2) => checkedEpisodes.has(`${season.number}-${ep2.number}`));
+            showCheckbox.checked = allEpisodes.every((ep2) => checkedEpisodes.has(`${ep2.season}-${ep2.episode}`));
+          }
+        });
+        epList.createEl("label", { text: `E${ep.number}: ${ep.title}` });
+      });
+    });
+    this.contentEl.createEl("br");
+    const submitBtn = this.contentEl.createEl("button", { text: "Add to Trakt" });
+    submitBtn.addEventListener("click", async () => {
+      if (checkedEpisodes.size === 0) {
+        new import_obsidian.Notice("Please select at least one episode.");
+        return;
+      }
+      const watchedAt = new Date(dateInput.value).toISOString();
+      const episodesPayload = Array.from(checkedEpisodes).map((key) => {
+        const [season, episode] = key.split("-").map(Number);
+        return { ids: traktShow.ids, season, number: episode, watched_at: watchedAt };
+      });
+      await this.plugin.addEpisodesToTrakt(traktShow, episodesPayload);
+      new import_obsidian.Notice(`Added ${checkedEpisodes.size} episode(s) to Trakt!`);
+      this.close();
+    });
+  }
+};
+if (document) {
+  const style = document.createElement("style");
+  style.textContent = `
+    .tmdb-search-result {
+        padding: 6px 10px;
+        cursor: pointer;
+        border-bottom: 1px solid #ddd;
+    }
+    .tmdb-search-result:hover {
+        background: #e0e0e0;
+    }
+    `;
+  document.head.appendChild(style);
+}
 /*! Bundled license information:
 
 mime-db/index.js:

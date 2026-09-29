@@ -4,6 +4,7 @@ import { getTMDBMovie, getTMDBShow } from "./tmdb";
 import { buildMarkdown } from "./markdown";
 import { groupHistoryItems, getLastWatched, getWatchedCount, getLastEpisodeInfo } from "./utils";
 import slugify from "slugify";
+import { request } from "obsidian";
 
 interface TraktSyncSettings {
   traktClientId: string;
@@ -55,6 +56,21 @@ const DEFAULT_SETTINGS: TraktSyncSettings = {
   tagFormat: "plain",
 };
 
+// Helper to recursively create directories
+async function ensureDir(adapter: any, dir: string) {
+  const parts = dir.split('/');
+  let current = '';
+  for (const part of parts) {
+    if (!part) continue;
+    current += (current ? '/' : '') + part;
+    try {
+      await adapter.stat(current);
+    } catch {
+      await adapter.mkdir(current);
+    }
+  }
+}
+
 export default class TraktSyncPlugin extends Plugin {
   settings: TraktSyncSettings;
   traktToken: TraktToken | null = null;
@@ -66,6 +82,11 @@ export default class TraktSyncPlugin extends Plugin {
       id: "sync-trakt-history",
       name: "Sync Trakt watch history",
       callback: () => this.syncTraktHistory(),
+    });
+    this.addCommand({
+      id: "add-watched-to-trakt",
+      name: "Add watched movie/show to Trakt",
+      callback: () => this.openAddWatchedModal(),
     });
   }
 
@@ -170,28 +191,14 @@ export default class TraktSyncPlugin extends Plugin {
           propTmdbId: this.settings.propTmdbId,
         });
         // 5. Write note
-        await this.app.vault.adapter.mkdir(normalizePath(notePath.split("/").slice(0, -1).join("/")));
-        let fileExisted = false;
-        try {
-          await this.app.vault.adapter.stat(notePath);
-          fileExisted = true;
-        } catch {}
-        let updatedFile = false;
-        if (fileExisted) {
-          const oldContent = await this.app.vault.adapter.read(notePath);
-          if (oldContent !== markdown) {
-            await this.app.vault.adapter.write(notePath, markdown);
-            updated++;
-            updatedFile = true;
-          } else {
-            skipped++;
-          }
-        } else {
-          await this.app.vault.adapter.write(notePath, markdown);
-          created++;
-        }
+        const folderPath = normalizePath(notePath.split("/").slice(0, -1).join("/"));
+        console.log("[TraktSyncPlugin] Ensuring folder exists:", folderPath);
+        await ensureDir(this.app.vault.adapter, folderPath);
+        console.log("[TraktSyncPlugin] Writing file (no read, always overwrite):", notePath);
+        await this.app.vault.adapter.write(notePath, markdown);
+        created++;
         processed++;
-        progressNotice.setMessage(`Trakt Sync: ${processed}/${total} (${created} created, ${updated} updated, ${skipped} skipped)`);
+        progressNotice.setMessage(`Trakt Sync: ${processed}/${total} (${created} written)`);
       }
       progressNotice.hide();
     } catch (e: any) {
@@ -217,6 +224,60 @@ export default class TraktSyncPlugin extends Plugin {
   async saveSettings() {
     await this.saveData(this.settings);
   }
+
+  openAddWatchedModal() {
+    new AddWatchedModal(this.app, this).open();
+  }
+
+  async addMovieToTrakt(item: any, watchedAt: string) {
+    const token = this.traktToken || await this.loadToken();
+    if (!token) throw new Error('Not authenticated with Trakt');
+    const payload = {
+      movies: [
+        {
+          ids: { tmdb: item.id },
+          watched_at: watchedAt
+        }
+      ]
+    };
+    await request({
+      url: "https://api.trakt.tv/sync/history",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "trakt-api-version": "2",
+        "trakt-api-key": this.settings.traktClientId,
+        "Authorization": `Bearer ${token.access_token}`
+      },
+      body: JSON.stringify(payload)
+    });
+  }
+
+  async addEpisodesToTrakt(item: any, episodes: any[]) {
+    const token = this.traktToken || await this.loadToken();
+    if (!token) throw new Error('Not authenticated with Trakt');
+    const payload = {
+        episodes: episodes.map(ep => ({
+            ids: { tmdb: item.id },
+            season: ep.season,
+            number: ep.episode,
+            watched_at: ep.watched_at
+        }))
+    };
+    console.log('[TraktSyncPlugin] Trakt episode payload:', JSON.stringify(payload, null, 2));
+    const response = await request({
+        url: "https://api.trakt.tv/sync/history",
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "trakt-api-version": "2",
+            "trakt-api-key": this.settings.traktClientId,
+            "Authorization": `Bearer ${token.access_token}`
+        },
+        body: JSON.stringify(payload)
+    });
+    console.log('[TraktSyncPlugin] Trakt API response:', response);
+}
 }
 
 class TraktDeviceCodeModal extends Modal {
@@ -557,4 +618,233 @@ class TraktSyncSettingTab extends PluginSettingTab {
         })
       );
   }
+}
+
+class AddWatchedModal extends Modal {
+  plugin: TraktSyncPlugin;
+  searchInput: HTMLInputElement;
+  resultsContainer: HTMLElement;
+  results: any[] = [];
+  constructor(app: App, plugin: TraktSyncPlugin) {
+    super(app);
+    this.plugin = plugin;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h2", { text: "Search TMDB for Movie/Show" });
+    this.searchInput = contentEl.createEl("input", { type: "text", placeholder: "Type a movie or show name..." });
+    this.resultsContainer = contentEl.createEl("div");
+    this.searchInput.addEventListener("input", async () => {
+      const query = this.searchInput.value.trim();
+      if (query.length < 2) {
+        this.resultsContainer.empty();
+        return;
+      }
+      this.resultsContainer.setText("Searching...");
+      const tmdbKey = this.plugin.settings.tmdbApiKey;
+      const url = `https://api.themoviedb.org/3/search/multi?api_key=${tmdbKey}&query=${encodeURIComponent(query)}`;
+      try {
+        const resp = await request({ url, method: "GET" });
+        const data = JSON.parse(resp);
+        this.results = (data.results || []).filter((r: any) => r.media_type === "movie" || r.media_type === "tv");
+        this.renderResults();
+      } catch (e) {
+        this.resultsContainer.setText("Error searching TMDB");
+      }
+    });
+  }
+  renderResults() {
+    console.log('[TraktSyncPlugin] TMDB search results:', this.results.map(item => ({ title: item.title || item.name, id: item.id, media_type: item.media_type })));
+    this.resultsContainer.empty();
+    if (!this.results.length) {
+      this.resultsContainer.setText("No results");
+      return;
+    }
+    this.results.forEach((item) => {
+      const row = this.resultsContainer.createEl("div", { cls: "tmdb-search-result" });
+      row.createEl("span", { text: `${item.media_type === "movie" ? "🎬" : "📺"} ${item.title || item.name} (${(item.release_date || item.first_air_date || "").split("-")[0]})` });
+      row.addEventListener("click", () => this.handleSelect(item));
+    });
+  }
+  async handleSelect(item: any) {
+    console.log('[TraktSyncPlugin] handleSelect:', { name: item.title || item.name, id: item.id, media_type: item.media_type });
+    if (item.media_type === "movie") {
+      this.promptForMovieDate(item);
+    } else if (item.media_type === "tv") {
+      await this.promptForShowEpisodes(item);
+    }
+  }
+  async promptForMovieDate(item: any) {
+    this.contentEl.empty();
+    this.contentEl.createEl("h2", { text: `Add Movie: ${item.title}` });
+    const dateInput = this.contentEl.createEl("input", { type: "datetime-local" });
+    // Default to now
+    const now = new Date();
+    dateInput.value = now.toISOString().slice(0, 16);
+    const submitBtn = this.contentEl.createEl("button", { text: "Add to Trakt" });
+    submitBtn.addEventListener("click", async () => {
+      const watchedAt = new Date(dateInput.value).toISOString();
+      await this.plugin.addMovieToTrakt(item, watchedAt);
+      new Notice(`Added ${item.title} to Trakt!`);
+      this.close();
+    });
+  }
+
+  async promptForShowEpisodes(item: any) {
+    console.log('[TraktSyncPlugin] promptForShowEpisodes:', { name: item.name, id: item.id });
+    // Fetch Trakt show data
+    let traktShow: any = null;
+    let traktIds: any = null;
+    try {
+      const resp = await request({
+        url: `https://api.trakt.tv/search/tmdb/${item.id}?type=show`,
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "trakt-api-version": "2",
+          "trakt-api-key": this.plugin.settings.traktClientId
+        }
+      });
+      const data = JSON.parse(resp);
+      if (data && data.length > 0 && data[0].show && data[0].show.ids) {
+        traktShow = data[0].show;
+        traktIds = data[0].show.ids;
+      }
+    } catch (e) {
+      console.log('[TraktSyncPlugin] Error fetching Trakt show:', e);
+    }
+    if (!traktShow || !traktIds || !traktIds.trakt) {
+      new Notice('Could not find this show on Trakt. Aborting.');
+      return;
+    }
+    // Show confirmation UI
+    this.contentEl.empty();
+    this.contentEl.createEl("h2", { text: `Add Show: ${(traktShow as any).title}` });
+    if ((traktShow as any).year) this.contentEl.createEl("div", { text: `Year: ${(traktShow as any).year}` });
+    if ((traktShow as any).images && (traktShow as any).images.poster && (traktShow as any).images.poster.full) {
+      const img = this.contentEl.createEl("img");
+      img.src = (traktShow as any).images.poster.full;
+      img.style.maxWidth = "100px";
+    }
+    this.contentEl.createEl("a", { text: "View on Trakt", href: `https://trakt.tv/shows/${(traktShow as any).ids.slug || (traktShow as any).ids.trakt}` , attr: { target: "_blank" } });
+    this.contentEl.createEl("hr");
+    // Fetch seasons/episodes from Trakt
+    let seasons = [];
+    try {
+      const resp = await request({
+        url: `https://api.trakt.tv/shows/${traktIds.trakt}/seasons?extended=episodes` ,
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "trakt-api-version": "2",
+          "trakt-api-key": this.plugin.settings.traktClientId
+        }
+      });
+      seasons = JSON.parse(resp);
+    } catch (e) {
+      new Notice('Could not fetch seasons/episodes from Trakt.');
+      return;
+    }
+    // Build UI
+    const dateInput = this.contentEl.createEl("input", { type: "datetime-local" });
+    // Default to now
+    const now = new Date();
+    dateInput.value = now.toISOString().slice(0, 16);
+    // Build allEpisodes from Trakt data
+    const allEpisodes: { season: number, episode: number, ids: any, title: string }[] = [];
+    seasons.forEach((season: any) => {
+      if (season.number === 0) return; // skip specials
+      (season.episodes || []).forEach((ep: any) => {
+        allEpisodes.push({ season: season.number, episode: ep.number, ids: ep.ids, title: ep.title });
+      });
+    });
+    // Checkbox state
+    const checkedEpisodes = new Set<string>();
+    // Entire show checkbox
+    const showCheckbox = this.contentEl.createEl("input", { type: "checkbox" });
+    showCheckbox.id = "show-checkbox";
+    this.contentEl.createEl("label", { text: "Mark entire show as watched", attr: { for: "show-checkbox" } });
+    showCheckbox.addEventListener("change", () => {
+      if (showCheckbox.checked) {
+        allEpisodes.forEach(ep => checkedEpisodes.add(`${ep.season}-${ep.episode}`));
+        this.contentEl.querySelectorAll(".season-checkbox, .episode-checkbox").forEach((cb: any) => cb.checked = true);
+      } else {
+        checkedEpisodes.clear();
+        this.contentEl.querySelectorAll(".season-checkbox, .episode-checkbox").forEach((cb: any) => cb.checked = false);
+      }
+    });
+    this.contentEl.createEl("br");
+    // Per-season and per-episode checkboxes
+    seasons.forEach((season: any) => {
+      if (season.number === 0) return; // skip specials
+      const seasonDiv = this.contentEl.createEl("div", { cls: "season-block" });
+      const seasonCheckbox = seasonDiv.createEl("input", { type: "checkbox", cls: "season-checkbox" });
+      seasonCheckbox.id = `season-${season.number}`;
+      seasonDiv.createEl("label", { text: `Season ${season.number}`, attr: { for: `season-${season.number}` } });
+      seasonCheckbox.addEventListener("change", () => {
+        (season.episodes || []).forEach((ep: any) => {
+          const key = `${season.number}-${ep.number}`;
+          const epCb = this.contentEl.querySelector(`#ep-${key}`) as HTMLInputElement;
+          if (seasonCheckbox.checked) {
+            checkedEpisodes.add(key);
+            if (epCb) epCb.checked = true;
+          } else {
+            checkedEpisodes.delete(key);
+            if (epCb) epCb.checked = false;
+          }
+        });
+      });
+      // Episodes
+      const epList = seasonDiv.createEl("div", { cls: "episode-list" });
+      (season.episodes || []).forEach((ep: any) => {
+        const key = `${season.number}-${ep.number}`;
+        const epCb = epList.createEl("input", { type: "checkbox", cls: "episode-checkbox" });
+        epCb.id = `ep-${key}`;
+        epCb.addEventListener("change", () => {
+          if (epCb.checked) {
+            checkedEpisodes.add(key);
+          } else {
+            checkedEpisodes.delete(key);
+            // Uncheck season if any episode is unchecked
+            seasonCheckbox.checked = (season.episodes || []).every((ep2: any) => checkedEpisodes.has(`${season.number}-${ep2.number}`));
+            showCheckbox.checked = allEpisodes.every(ep2 => checkedEpisodes.has(`${ep2.season}-${ep2.episode}`));
+          }
+        });
+        epList.createEl("label", { text: `E${ep.number}: ${ep.title}` });
+      });
+    });
+    this.contentEl.createEl("br");
+    const submitBtn = this.contentEl.createEl("button", { text: "Add to Trakt" });
+    submitBtn.addEventListener("click", async () => {
+      if (checkedEpisodes.size === 0) {
+        new Notice("Please select at least one episode.");
+        return;
+      }
+      const watchedAt = new Date(dateInput.value).toISOString();
+      // Build payload for Trakt using all IDs
+      const episodesPayload = Array.from(checkedEpisodes).map(key => {
+        const [season, episode] = key.split("-").map(Number);
+        return { ids: (traktShow as any).ids, season, number: episode, watched_at: watchedAt };
+      });
+      await this.plugin.addEpisodesToTrakt(traktShow, episodesPayload);
+      new Notice(`Added ${checkedEpisodes.size} episode(s) to Trakt!`);
+      this.close();
+    });
+  }
+}
+
+if (document) {
+    const style = document.createElement('style');
+    style.textContent = `
+    .tmdb-search-result {
+        padding: 6px 10px;
+        cursor: pointer;
+        border-bottom: 1px solid #ddd;
+    }
+    .tmdb-search-result:hover {
+        background: #e0e0e0;
+    }
+    `;
+    document.head.appendChild(style);
 } 
